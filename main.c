@@ -45,7 +45,7 @@ struct Stack_{
     int num; ///< Number of elements of data (malloced memory)
     int pos; ///< Next free position of stack (pop/push/getlast)
     unsigned char* meta; ///< "Poison" check of data
-    unsigned int metaNum; ///< Number of elements of meta (malloced memory)
+    int metaNum; ///< Number of elements of meta (malloced memory)
 };
 
 int meta_main(Stack *ptrStack, int flag, int x);

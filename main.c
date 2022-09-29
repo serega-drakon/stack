@@ -37,8 +37,7 @@ int main() {
 #define RESET 2
 #define STEP 10
 
-/**
- * Structure of stack\n
+/** Structure of stack\n
  * Думаю на канарейки выделю по одному элементу размера size слева и справа */
 struct Stack_{
     void* data; ///< Pointer to data
@@ -52,8 +51,7 @@ struct Stack_{
 int meta_main(Stack *ptrStack, int flag, int x);
 void stack_extend(Stack *ptrStack, int x);
 
-/**
- * Main function of stack array
+/** Main function of stack array
  * @param ptrStack Pointer to stack
  * @param flag READ or WRITE
  * @param x Position to operate
@@ -80,8 +78,7 @@ void* stack_main(Stack *ptrStack, int flag, int x, void* ptrValue){
     }
 }
 
-/**
- * Extends given Stack_ by STEP const \n
+/** Extends given Stack_ by STEP const \n
  * (ptrStack->data == Null || ptrStack->meta == NULL) if memory error occurred \n */
 void stack_extend(Stack *ptrStack, int x){
     void* buffArray = ptrStack->data; ///< Saves previous pointer's value
@@ -126,8 +123,7 @@ int meta_main(Stack *ptrStack, int flag, int x){
     }
 }
 
-/**
- * Constructor of stack. \n
+/** Constructor of stack. \n
  * Outputs "memory error" to command line if error occurred */
 void* stackInit(int size){
     if(size <= 0)
@@ -176,7 +172,7 @@ void* stack_w(Stack *ptrStack, int x, void* ptrValue){
         return NULL;                                        //FIXME!!!! в противном условии возвращать адрес канарейки (и проверять ее на всякий)
 }
 
-/**Stack function: Push \n
+/** Stack function: Push \n
  * Adds a new element to the end of the stack
  * @param ptrStack - pointer to stack struct
  * @param ptrValue - pointer to value
@@ -188,7 +184,7 @@ void* push(Stack *ptrStack, void* ptrValue){
         return NULL;                                        //FIXME!!!! в противном условии возвращать адрес канарейки (и проверять ее на всякий)
 }
 
-/**Stack function: Pop \n
+/** Stack function: Pop \n
  * Gets a new element from the end of the stack
  * @param ptrStack - pointer to stack struct */
 void* pop(Stack *ptrStack){
@@ -201,7 +197,7 @@ void* pop(Stack *ptrStack){
         return NULL;                                        //FIXME!!!! в противном условии возвращать адрес канарейки (и проверять ее на всякий)
 }
 
-/**Stack function: GetLast \n
+/** Stack function: GetLast \n
  * Gets a last element of stack
  * @param ptrStack - pointer to stack struct */
 void* getLast(Stack *ptrStack){

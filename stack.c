@@ -7,6 +7,7 @@
 #define WRITE 1
 #define HAS_USED 1
 #define RESET 2
+#define FIXED 2
 #define STEP 10
 
 #define KAN_SIZE 1
@@ -16,6 +17,7 @@ enum Errors { //Не больше 8 ошибок! иначе надо расши
     DataArrayNull,
     BufferNull,
     MetaNull,
+    KanareiykePizda,
 };
 
 /** Structure of stack\n
@@ -52,7 +54,7 @@ void myMemCpy(void *toPtr, void *fromPtr, int sizeInBytes){
  * @param x Position to operate
  * @param ptrValue Pointer to value of (ptrStack->size) size */
 void *stack_main(Stack *ptrStack, int flag, int x, void *ptrValue) {
-    assert(ptrStack != NULL); //ассерты имба//ассерты имба//ассерты имба//ассерты имба//ассерты имба//ассерты имба//ассерты имба//ассерты имба
+    assert(ptrStack != NULL); //ассерты имба
     assert(flag != WRITE || ptrValue != NULL);//формулу получил из упрощения логического выражения
     assert(flag == READ || flag == WRITE);
     assert(x >= 0);
@@ -71,49 +73,54 @@ void *stack_main(Stack *ptrStack, int flag, int x, void *ptrValue) {
             //check here needed
             if (!meta_main(ptrStack, READ, x))
                 printf("stack_main: using before undefined value X = %d\n", x);
-            return &((char *) ptrStack->data)[x * ptrStack->size];
+            return &((char *) ptrStack->data)[(x + KAN_SIZE) * ptrStack->size];
         case WRITE:
-            myMemCpy(&(((char *) ptrStack->data)[x * ptrStack->size]), ptrValue, ptrStack->size);
+            myMemCpy(&(((char *) ptrStack->data)[(x + KAN_SIZE) * ptrStack->size]), ptrValue, ptrStack->size);
             meta_main(ptrStack, HAS_USED, x);
-            return &((char *) ptrStack->data)[x * ptrStack->size];
+            return &((char *) ptrStack->data)[(x + KAN_SIZE) * ptrStack->size];
     }
 }
 
 /** Extends given Stack_ by STEP const \n
  * (ptrStack->data == Null || ptrStack->meta == NULL) if memory error occurred \n */
-void stack_extend(Stack *ptrStack, int x) {
+void stack_extend(Stack *ptrStack, int x) {   //FIXME: обновление позиций канареек с сохр значения
     assert(ptrStack != NULL);
     assert(x >= 0);
 
-    void *buffArray = ptrStack->data; ///< Saves previous pointer's value
+    void *buffPtr; ///< Saves previous pointer's value
     int i; ///< Counter
 
     //Сначала выделяем память под data
     if (x >= ptrStack->num) {
+        buffPtr = ptrStack->data;
         x = x + 1 + (STEP - (x + 1) % STEP);///< new number of elements
-        ptrStack->data = malloc(x * ptrStack->size);
+        ptrStack->data = malloc((x + 2 * KAN_SIZE) * ptrStack->size); //+канарейка слева и справа
         //проверка на ошибку
         if (ptrStack->data != NULL) {
             //возвращаем элементы
-            myMemCpy(ptrStack->data, buffArray, ptrStack->num * ptrStack->size);
+            myMemCpy(&((char*)ptrStack->data)[KAN_SIZE], buffPtr, ptrStack->num * ptrStack->size);
             ptrStack->num = x;
-            free(buffArray);
-        } else
+            free(buffPtr);
+        } else {
             error_main(ptrStack, WRITE, DataArrayNull); //отчет об ошибке
+            ptrStack->data = buffPtr;
+        }
     }
     //Потом выделяем память для meta
     if (x > ptrStack->metaNum * 8) {
+        buffPtr = ptrStack->meta;
         x = x / 8 + (x % 8 == 0 ? 0 : 1);
-        buffArray = ptrStack->meta;
         ptrStack->meta = calloc(x, sizeof(char)); //калок чтобы нулики везде были
         //проверка на ошибку
         if (ptrStack->meta != NULL) {
             //возвращаем элементы
-            myMemCpy(ptrStack->meta, buffArray, ptrStack->metaNum);
+            myMemCpy(ptrStack->meta, buffPtr, ptrStack->metaNum);
             ptrStack->metaNum = x;
-            free(buffArray);
-        } else
+            free(buffPtr);
+        } else {
             error_main(ptrStack, WRITE, MetaNull);
+            ptrStack->meta = buffPtr;
+        }
     }
 
 }
@@ -125,46 +132,55 @@ int meta_main(Stack *ptrStack, int flag, int x) {
 
     switch (flag) {
         case READ:
-            return (ptrStack->meta[x / 8] >> (7 - x % 8)) & 1; //достаю нужный бит
+            break;
         case HAS_USED:
             ptrStack->meta[x / 8] = ptrStack->meta[x / 8] | (1 << (7 - (char) (x % 8)));
-            return 1;
+            break;
         case RESET:
             ptrStack->meta[x / 8] = ptrStack->meta[x / 8] & ~(1 << (7 - (char) (x % 8)));
-            return 0;
+            break;
     }
+    return (ptrStack->meta[x / 8] >> (7 - x % 8)) & 1; //достаю нужный бит
 }
 
-///максимум вариантов ошибок - 8 с таким размером error \n
-///идея такова что мы храним ака массив булов, которые содержат информацию о том, была ли совершена ошибка
-int error_main(Stack *ptrStack, int flag, int numOfError) { //заметим что сброса ошибок нет
+///Максимум вариантов ошибок - 8 с таким размером error. \n
+///Идея такова что мы храним ака массив булов, которые содержат информацию о том, была ли совершена конкретная ошибка. \n
+///И если мы захотим решить проблему точечно, а не пересоздавать полностью структуру, то мы можем это сделать. \n
+int error_main(Stack *ptrStack, int flag, int numOfError) {
     assert(ptrStack != NULL);
-    assert(flag == READ || flag == WRITE);
+    assert(flag == READ || flag == WRITE); //flag == FIXED пока не включаю
     assert(numOfError >= 0);
 
     switch (flag) {
         case READ:
-            return ptrStack->error >> numOfError & 1; //достаю нужный бит
+            break;
         case WRITE:
             ptrStack->error = ptrStack->error | (1 << numOfError);
-            return 1;
+            break;
+        case FIXED: //пока пусть будет, хоть я это нигде и не использовал
+            ptrStack->error = ptrStack->error & ~(1 << numOfError);
+            break; //мб можно придумать функцию, которая занимается "починкой" этой структуры
     }
+    return ptrStack->error >> numOfError & 1; //достаю нужный бит
 }
 
 /** Checks pointers for NULL value \n*/
 ///returns !0 if error occurred and prints messages about
 int stackErrorCheck(Stack *ptrStack) {
     if (ptrStack != NULL) {
+        //вывод инфы об ошибках
         if (error_main(ptrStack, READ, DataArrayNull))
             printf("error DataArrayNull\n");
         if (error_main(ptrStack, READ, BufferNull))
             printf("error BufferNull\n");
         if (error_main(ptrStack, READ, MetaNull))
             printf("error MetaNull\n");
+        //проверка канареек
+        //FIXME проверка канареек
 
         return ptrStack->error;
     } else
-        return 1;
+        return 1 << PtrStackNull;
     //ака так бы было если бы переменная error существовала
 }
 
@@ -185,10 +201,21 @@ void *stackInit(int size) {
         if (ptrStack->buffer == NULL)
             error_main(ptrStack, WRITE, BufferNull);
         stack_extend(ptrStack, 0);
+
+        //FIXME: канарейки дефолт значение
     } else
         printf("stackInit: memory error\n");
     stackErrorCheck(ptrStack);
     return ptrStack;
+}
+
+void stackFree(Stack *ptrStack){
+    if(ptrStack != NULL){
+        free(ptrStack->data); //внутри free() есть проверка на NULL
+        free(ptrStack->buffer);
+        free(ptrStack->meta);
+    }
+    free(ptrStack);
 }
 
 /** Array READ function \n

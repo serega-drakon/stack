@@ -17,6 +17,7 @@ int main() {
     for(int i = 0; i < 10; i++){
         printf("%c", *((int*)pop(ptrStack)));
     }
+    stackFree(ptrStack);
     getchar();
     return 0;
 }

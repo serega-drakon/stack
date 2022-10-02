@@ -93,7 +93,7 @@ void stack_extend(Stack *ptrStack, int x) {   //FIXME: обновление по
     //Сначала выделяем память под data
     if (x >= ptrStack->num) {
         buffPtr = ptrStack->data;
-        x = x + 1 + (STEP - (x + 1) % STEP);///< new number of elements
+        x = x + 1 + (STEP - (x + 1) % STEP);///< new number of elements   //FIXME: заменить на степень двойки для O(1) (в пределе num -> inf)
         ptrStack->data = malloc((x + 2 * KAN_SIZE) * ptrStack->size); //+канарейка слева и справа
         //проверка на ошибку
         if (ptrStack->data != NULL) {
@@ -263,7 +263,7 @@ void *push(Stack *ptrStack, void *ptrValue) {
 /** Stack function: Pop \n
  * Gets a new element from the end of the stack
  * @param ptrStack - pointer to stack struct */
-void *pop(Stack *ptrStack) {
+void *pop(Stack *ptrStack) { //FIXME пойзоны
     if (!stackErrorCheck(ptrStack) && ptrStack->pos > 0) {
         void *buffPtr = stack_main(ptrStack, READ, --ptrStack->pos, NULL); ///< Saves result's pointer
         meta_main(ptrStack, RESET, ptrStack->pos); ///< resets that position

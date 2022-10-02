@@ -13,5 +13,7 @@ void *pop(Stack *ptrStack);
 void *getLast(Stack *ptrStack);
 void stackFree(Stack *ptrStack);
 
+unsigned long long int hash_sedgwick(Stack *ptrStack); //debug
+
 
 #endif //UNTITLED_STACK_H

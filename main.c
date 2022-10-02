@@ -14,6 +14,8 @@ int main() {
         c = getchar();
         push(ptrStack, ptrValue);
     }
+
+    printf("HASH - huesh: %llu\n", hash_sedgwick(ptrStack));
     for(int i = 0; i < 10; i++){
         printf("%c", *((int*)pop(ptrStack)));
     }

@@ -11,7 +11,8 @@
 #define STEP 10
 
 #define KAN_NUM 1
-#define KAN_VALUE 255
+#define KAN_VALUE 255   //1111.1111
+#define POISON_VALUE 255
 
 enum Errors { //Не больше 8 ошибок! иначе надо расширять переменную error
     PtrStackNull = 0, //number of right bit in error
@@ -105,11 +106,9 @@ void stack_extend(Stack *ptrStack, int x) {
                      KAN_NUM * ptrStack->size);//размер
 
             if(!error_main(ptrStack, READ, BufferNull))
-                //заполняю пустоты пойзонами (пусть побудут как значения ptrStack->buffer)
-                for(int i = 0; i < x - ptrStack->num; i++){
-                    myMemCpy(&((char*)ptrStack->data)[(KAN_NUM + ptrStack->num + i) * ptrStack->size],
-                             ptrStack->buffer,
-                             ptrStack->size);
+                //заполняю пустоты пойзонами
+                for(int i = 0; i < (x - ptrStack->num) * ptrStack->size ; i++){
+                    ((char*)ptrStack->data)[(KAN_NUM + ptrStack->num) * ptrStack->size + i] = POISON_VALUE;
                 }
             ptrStack->num = x;
             free(buffPtr);
@@ -228,8 +227,8 @@ void *stackInit(int size) {
         //заполняем канарейки
         if(ptrStack->data != NULL) {
             for(int i = 0; i < KAN_NUM * ptrStack->size; i++){
-                ((char*)ptrStack->data)[i] = KAN_VALUE; //1111.1111
-                ((char*)ptrStack->data)[(KAN_NUM + ptrStack->num) * ptrStack->size + i] = KAN_VALUE; //1111.1111
+                ((char*)ptrStack->data)[i] = KAN_VALUE;
+                ((char*)ptrStack->data)[(KAN_NUM + ptrStack->num) * ptrStack->size + i] = KAN_VALUE;
             }
         }
         else

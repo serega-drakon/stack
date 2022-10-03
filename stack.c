@@ -60,13 +60,27 @@ unsigned long long int hash_sedgwick(Stack *ptrStack){ //returns hash of ptrStac
 void myMemCpy(void *toPtr, void *fromPtr, int sizeInBytes){
     assert(toPtr != NULL);
     assert(sizeInBytes >= 0);
-    assert(fromPtr != NULL || sizeInBytes == 0);
+    assert(fromPtr != NULL || sizeInBytes == 0);//если эта функция используется только внутри либы стека то зюс использование ассертов
 
     for (int i = 0; i < sizeInBytes; i++)
         ((char *) toPtr)[i] = ((char *) fromPtr)[i];
 }
 
+/**
+ * @brief Что нужно сказать женщине, у которой фингал под каждым глазом?
+ * 
+ * @param ptrStack 
+ * @param x 
+ * Ей ничего не скажешь, ведь ты уже объяснял дважды
+ */
 void saveResToBuff(Stack *ptrStack, int x){
+
+    /*можно вот так разбить функцию для понятности
+    int shift_in_stack = (x + KAN_NUM) * ptrStack->size
+    void* from_buf = &((char *) ptrStack->data)[sfift_in_stack]
+    myMemCpy(ptrStack->buffForRes, from_buf, ptrStack->size);
+    */  
+
     myMemCpy(ptrStack->buffForRes, &((char *) ptrStack->data)[(x + KAN_NUM) * ptrStack->size], ptrStack->size);
 }
 
@@ -83,7 +97,7 @@ void *stack_main(Stack *ptrStack, int flag, int x, void *ptrValue) {
 
     //hash check
     if(ptrStack->hash != hash_sedgwick(ptrStack)) {
-        error_main(ptrStack, WRITE, HashMismatch);
+        error_main(ptrStack, WRITE, HashMismatch); //так при ошибке не надо продолжать функцию
     }
 
     stack_extend(ptrStack, x);//все проверки внутри этой ф.
@@ -224,7 +238,7 @@ void stack_reset_pos(Stack *ptrStack, int x){
 
 /** Checks pointers for NULL value \n*/
 ///returns !0 if error occurred and prints messages about
-int stackErrorCheck(Stack *ptrStack) {
+int stackErrorCheck(Stack *ptrStack) {      //ч точки зрения производительности лучше добавить проверку на наличие ошибки и выход в самое начало, поскольку ошибки чаще не случаются, а тут каждый раз проверка всех ошибок
     if (ptrStack != NULL) {
         //вывод инфы об ошибках
         if (error_main(ptrStack, READ, DataArrayNull))

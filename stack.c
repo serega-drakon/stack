@@ -30,6 +30,15 @@ else                                                \
     return NULL;                                    \
 }while(0)
 
+enum Errors { //Не больше 8 ошибок! иначе надо расширять переменную error
+    PtrStackNull = 0, //number of right bit in error
+    DataArrayNull,
+    BuffForErrNull,
+    BuffForResNull,
+    MetaNull,
+    KanareiykePizda,
+    HashMismatch,
+};
 
 /// Structure of stack
 struct Stack_ {

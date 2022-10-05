@@ -6,16 +6,6 @@
 #define GENERATE_PUSH(type) type* push_##type(Stack *ptrStack, void *ptrValue) { return (type*) push(ptrStack, ptrValue); }
 #define GENERATE_CREATE(type) type* create_##type() { return stackInit(sizeof(type)); }
 
-enum Errors { //Не больше 8 ошибок! иначе надо расширять переменную error
-    PtrStackNull = 0, //number of right bit in error
-    DataArrayNull,
-    BuffForErrNull,
-    BuffForResNull,
-    MetaNull,
-    KanareiykePizda,
-    HashMismatch,
-};
-
 typedef struct Stack_ Stack;
 
 void stackErrorPrint(Stack *ptrStack);

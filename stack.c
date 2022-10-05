@@ -136,8 +136,10 @@ void stack_extend(Stack *ptrStack, int x) {
         //проверка на ошибку
         if (ptrStack->data != NULL) {
             //возвращаем элементы (включил канарейку слева)
-            const void *ptrKanRightNew = &((char*)ptrStack->data)[(KAN_NUM + x) * ptrStack->size];//указатель на новую канарейку справа
-            const void *ptrKanRightOld = &((char*)buffPtr)[(KAN_NUM + ptrStack->num) * ptrStack->size];//указатель на старую канарейку справа
+            //указатель на новую канарейку справа
+            const void *ptrKanRightNew = &((char*)ptrStack->data)[(KAN_NUM + x) * ptrStack->size];
+            //указатель на старую канарейку справа
+            const void *ptrKanRightOld = &((char*)buffPtr)[(KAN_NUM + ptrStack->num) * ptrStack->size];
 
             myMemCpy(ptrStack->data, buffPtr, (KAN_NUM + ptrStack->num) * ptrStack->size);
             myMemCpy(ptrKanRightNew,ptrKanRightOld, KAN_NUM * ptrStack->size);

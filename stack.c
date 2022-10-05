@@ -29,7 +29,7 @@ if (ptrStack != NULL && error_main(ptrStack, READ, BuffForErrNull) == 0)\
 else                                                \
     return NULL;                                    \
 }while(0)
-                                                                                //добавить потом продвинутую проверку по пойзонам, а то они есть, но никаких проверок толком нет
+
 
 /// Structure of stack
 struct Stack_ {

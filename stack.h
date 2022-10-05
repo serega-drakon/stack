@@ -26,6 +26,7 @@ void *stack_w(Stack *ptrStack, int x, void *ptrValue);
 void *push(Stack *ptrStack, void *ptrValue);
 void *pop(Stack *ptrStack);
 void *getLast(Stack *ptrStack);
+int getsize(Stack *ptrStack);
 void stackFree(Stack *ptrStack);
 
 #endif //UNTITLED_STACK_H

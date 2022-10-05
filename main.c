@@ -7,7 +7,7 @@ GENERATE_POP(int)
 
 GENERATE_PUSH(int)
 
-int main() {
+int main() {  //debug
     Stack *ptrStack = create_int();
     if(stackErrorCheck(ptrStack))
         return 1;
@@ -19,7 +19,7 @@ int main() {
         c = getchar();
         push_int(ptrStack, ptrValue);
     }
-    printf("\n|%c|\n",GET(int, ptrStack, 1));
+    printf("\n|%c, size of stack: %d|\n", GET(int, ptrStack, 1), getsize(ptrStack));
 
     for(int i = 0; i < 10; i++){
         printf("%c", *pop_int(ptrStack));

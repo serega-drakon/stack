@@ -183,17 +183,20 @@ int meta_main(Stack *ptrStack, int flag, int x) {
     assert(ptrStack != NULL);
     assert(flag == READ || flag == HAS_USED || flag == RESET);
 
+    //нумерация справа налево
+    const int numOfBit = 7 - (char) (x % 8);
+
     switch (flag) {
         case READ:
             break;
         case HAS_USED:
-            ptrStack->meta[x / 8] = ptrStack->meta[x / 8] | (1 << (7 - (char) (x % 8)));
+            ptrStack->meta[x / 8] = ptrStack->meta[x / 8] | (1 << numOfBit);
             break;
         case RESET:
-            ptrStack->meta[x / 8] = ptrStack->meta[x / 8] & ~(1 << (7 - (char) (x % 8)));
+            ptrStack->meta[x / 8] = ptrStack->meta[x / 8] & ~(1 << numOfBit);
             break;
     }
-    return (ptrStack->meta[x / 8] >> (7 - x % 8)) & 1; //достаю нужный бит
+    return (ptrStack->meta[x / 8] >> numOfBit) & 1; //достаю нужный бит
 }
 
 ///Максимум вариантов ошибок - 8 с таким размером error.
@@ -278,7 +281,7 @@ void *stackInit(int size) {
     if (ptrStack != NULL) {
         ptrStack->size = size;
         ptrStack->pos = 0;
-        ptrStack->metaNum = 0;//FIXME 1
+        ptrStack->metaNum = 0;
         ptrStack->error = 0;
 
         ptrStack->buffForRes = malloc(ptrStack->size);
@@ -368,5 +371,12 @@ void *getLast(Stack *ptrStack) {
         return stack_main(ptrStack, READ, ptrStack->pos - 1, NULL);
     else
         EXIT;
+}
+
+int getsize(Stack *ptrStack){
+    if(!stackErrorCheck(ptrStack))
+        return ptrStack->pos - 1;
+    else
+        return 0;
 }
 

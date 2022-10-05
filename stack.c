@@ -15,19 +15,23 @@
 #define POISON_VALUE 255 //1111.1111
 
 #define HASH_SIZE ULLONG_MAX
-                                                                                //добавить потом продвинутую проверку по пойзонам, а то они есть, но никаких проверок толком нету
-enum Errors { //Не больше 8 ошибок! иначе надо расширять переменную error
-    PtrStackNull = 0, //number of right bit in error
-    DataArrayNull,
-    BuffForErrNull,
-    BuffForResNull,
-    MetaNull,
-    KanareiykePizda,
-    HashMismatch,
-};
 
-/** Structure of stack\n
- * Думаю на канарейки выделю по одному элементу размера size слева и справа */
+#define EXIT_MAIN do{ \
+if (error_main(ptrStack, READ, BuffForErrNull) == 0)\
+    return ptrStack->buffForErr;                    \
+else                                                \
+    return NULL;                                    \
+}while(0)
+
+#define EXIT do{ \
+if (ptrStack != NULL && error_main(ptrStack, READ, BuffForErrNull) == 0)\
+    return ptrStack->buffForErr;                    \
+else                                                \
+    return NULL;                                    \
+}while(0)
+                                                                                //добавить потом продвинутую проверку по пойзонам, а то они есть, но никаких проверок толком нет
+
+/// Structure of stack
 struct Stack_ {
     void *data; ///< Pointer to data
     void *buffForErr;///< buffForErr returns if error occurred
@@ -50,7 +54,8 @@ void stack_extend(Stack *ptrStack, int x);
 int kanareiyka_check(Stack *ptrStack);
 
 //хеш считается от всего массива кроме канареек
-unsigned long long int hash_sedgwick(Stack *ptrStack){ //returns hash of ptrStack->data
+///Returns hash of ptrStack->data
+unsigned long long int hash_sedgwick(Stack *ptrStack){
     unsigned long long int hash = 0;
     unsigned int i, a = 31415, b = 27183;
     for(i = KAN_NUM; i < (ptrStack->num + KAN_NUM) * ptrStack->size; i++, a = a * b % HASH_SIZE)
@@ -58,62 +63,45 @@ unsigned long long int hash_sedgwick(Stack *ptrStack){ //returns hash of ptrStac
     return hash;
 }
 
+///Копирует участок помяти по байтам с fromPtr на toPtr
 void myMemCpy(const void *toPtr, const void *fromPtr, int sizeInBytes){
     assert(toPtr != NULL);
     assert(sizeInBytes >= 0);
-    assert(fromPtr != NULL || sizeInBytes == 0);//если эта функция используется только внутри либы стека то зюс использование ассертов
+    assert(fromPtr != NULL || sizeInBytes == 0);
 
     for (int i = 0; i < sizeInBytes; i++)
         ((char *) toPtr)[i] = ((char *) fromPtr)[i];
 }
 
-/**
- * @brief Что нужно сказать женщине, у которой фингал под каждым глазом?
- * 
- * @param ptrStack 
- * @param x 
- * Ей ничего не скажешь, ведь ты уже объяснял дважды
- */
 void saveResToBuff(Stack *ptrStack, int x){
     const int shift_in_stack = (x + KAN_NUM) * ptrStack->size;
     const void* from_buf = &((char *) ptrStack->data)[shift_in_stack];
     myMemCpy(ptrStack->buffForRes, from_buf, ptrStack->size);
 }
 
-/** Main function of stack array
- * @param ptrStack Pointer to stack
- * @param flag READ or WRITE
- * @param x Position to operate
- * @param ptrValue Pointer to value of (ptrStack->size) size */
+/// Main function of stack array
 void *stack_main(Stack *ptrStack, int flag, int x, void *ptrValue) {
-    assert(ptrStack != NULL); //ассерты имба
-    assert(flag != WRITE || ptrValue != NULL);//формулу получил из упрощения логического выражения
+    assert(ptrStack != NULL);
+    assert(flag != WRITE || ptrValue != NULL);
     assert(flag == READ || flag == WRITE);
     assert(x >= 0);
 
     if(kanareiyka_check(ptrStack))
         error_main(ptrStack, WRITE, KanareiykePizda);
-    //hash check
     if(ptrStack->hash != hash_sedgwick(ptrStack)) {
         error_main(ptrStack, WRITE, HashMismatch);
-        stackErrorCheck(ptrStack);
+        stackErrorPrint(ptrStack);
     }
-    if(ptrStack->error){
-        if (error_main(ptrStack, READ, BuffForErrNull) == 0)
-            return ptrStack->buffForErr;
-        else
-            return NULL;
+    if(stackErrorCheck(ptrStack)) {
+        stackErrorPrint(ptrStack);
+        EXIT_MAIN;
     }
     //extend check
-    stack_extend(ptrStack, x);//все проверки внутри этой ф.
-    if (ptrStack->error) {
-        stackErrorCheck(ptrStack);
+    stack_extend(ptrStack, x);
+    if (stackErrorCheck(ptrStack)) {
         printf("stack_main: error\n");
-        //exit
-        if (error_main(ptrStack, READ, BuffForErrNull) == 0)
-            return ptrStack->buffForErr;
-        else
-            return NULL;//возвращает нулл в крайнем случае
+        stackErrorPrint(ptrStack);
+        EXIT_MAIN;
     }
 
     switch (flag) {
@@ -124,6 +112,7 @@ void *stack_main(Stack *ptrStack, int flag, int x, void *ptrValue) {
             saveResToBuff(ptrStack, x);
             return ptrStack->buffForRes;
         case WRITE:
+            //const int toPtr = &(((char *) ptrStack->data)[(x + KAN_NUM) * ptrStack->size]); //выдает ошибку
             myMemCpy(&(((char *) ptrStack->data)[(x + KAN_NUM) * ptrStack->size]), ptrValue, ptrStack->size);
             meta_main(ptrStack, HAS_USED, x);
             ptrStack->hash = hash_sedgwick(ptrStack);
@@ -132,26 +121,26 @@ void *stack_main(Stack *ptrStack, int flag, int x, void *ptrValue) {
     }
 }
 
-/** Extends given Stack_ by STEP const \n
- * (ptrStack->data == Null || ptrStack->meta == NULL) if memory error occurred \n */
+/// Extends given Stack_ by STEP const
 void stack_extend(Stack *ptrStack, int x) {
     assert(ptrStack != NULL);
     assert(x >= 0);
 
-    void *buffPtr; ///< Saves previous pointer's value
+    void *buffPtr;
 
     //Сначала выделяем память под data
     if (x >= ptrStack->num) {
         buffPtr = ptrStack->data;
-        x = x * 2;///< new number of elements
+        x = x * 2; //new number of elements
         ptrStack->data = malloc((x + 2 * KAN_NUM) * ptrStack->size); //+канарейка слева и справа
         //проверка на ошибку
         if (ptrStack->data != NULL) {
             //возвращаем элементы (включил канарейку слева)
+            const void *ptrKanRightNew = &((char*)ptrStack->data)[(KAN_NUM + x) * ptrStack->size];//указатель на новую канарейку справа
+            const void *ptrKanRightOld = &((char*)buffPtr)[(KAN_NUM + ptrStack->num) * ptrStack->size];//указатель на старую канарейку справа
+
             myMemCpy(ptrStack->data, buffPtr, (KAN_NUM + ptrStack->num) * ptrStack->size);
-            myMemCpy(&((char*)ptrStack->data)[(KAN_NUM + x) * ptrStack->size], //указатель на канарейку справа
-                     &((char*)buffPtr)[(KAN_NUM + ptrStack->num) * ptrStack->size], //указатель на другую канарейку справа
-                     KAN_NUM * ptrStack->size);//размер
+            myMemCpy(ptrKanRightNew,ptrKanRightOld, KAN_NUM * ptrStack->size);
 
             if(!error_main(ptrStack, READ, BuffForErrNull))
                 //заполняю пустоты пойзонами
@@ -163,6 +152,7 @@ void stack_extend(Stack *ptrStack, int x) {
         } else {
             error_main(ptrStack, WRITE, DataArrayNull); //отчет об ошибке
             ptrStack->data = buffPtr;
+            return;
         }
     }
     //Потом выделяем память для meta
@@ -171,8 +161,7 @@ void stack_extend(Stack *ptrStack, int x) {
         int y;
         for(y = ptrStack->metaNum; y * 8 < x; y *= 2)
             ;
-        ptrStack->meta = calloc(y, sizeof(char)); //калок чтобы нулики везде были
-        //проверка на ошибку
+        ptrStack->meta = calloc(y, sizeof(char));
         if (ptrStack->meta != NULL) {
             //возвращаем элементы
             myMemCpy(ptrStack->meta, buffPtr, ptrStack->metaNum);
@@ -181,12 +170,13 @@ void stack_extend(Stack *ptrStack, int x) {
         } else {
             error_main(ptrStack, WRITE, MetaNull);
             ptrStack->meta = buffPtr;
+            return;
         }
     }
 
 }
 
-/** "Poison" check function */
+///Битовый массив, который содержит информацию об использовании каждого из элементов массива
 int meta_main(Stack *ptrStack, int flag, int x) {
     assert(ptrStack != NULL);
     assert(flag == READ || flag == HAS_USED || flag == RESET);
@@ -204,9 +194,7 @@ int meta_main(Stack *ptrStack, int flag, int x) {
     return (ptrStack->meta[x / 8] >> (7 - x % 8)) & 1; //достаю нужный бит
 }
 
-///Максимум вариантов ошибок - 8 с таким размером error. \n
-///Идея такова что мы храним ака массив булов, которые содержат информацию о том, была ли совершена конкретная ошибка. \n
-///И если мы захотим решить проблему точечно, а не пересоздавать полностью структуру, то мы можем это сделать. \n
+///Максимум вариантов ошибок - 8 с таким размером error.
 int error_main(Stack *ptrStack, int flag, int numOfError) {
     assert(ptrStack != NULL);
     assert(flag == READ || flag == WRITE); //flag == FIXED пока не включаю
@@ -225,18 +213,22 @@ int error_main(Stack *ptrStack, int flag, int numOfError) {
     return ptrStack->error >> numOfError & 1; //достаю нужный бит
 }
 
+///проверяет канарейки массива и возвращает 1 если они повреждены, 0 если нет.
 int kanareiyka_check(Stack *ptrStack){
     int check = 0;
+    const int shift = (KAN_NUM + ptrStack->num) * ptrStack->size;
+
     for(int i = 0; i < KAN_NUM * ptrStack->size; i++)
         if(((unsigned char*)ptrStack->data)[i] != KAN_VALUE
-        || ((unsigned char*)ptrStack->data)[(KAN_NUM + ptrStack->num) * ptrStack->size + i] != KAN_VALUE)
+        || ((unsigned char*)ptrStack->data)[shift + i] != KAN_VALUE)
             check = 1;
     return check;
 }
 
+///сбрасывает текущую позицию массива до пойзона.
 void stack_reset_pos(Stack *ptrStack, int x){
-    //мб тут можно сделать лучше, но я оч задолбался
     int i;
+
     for(i = 0; i < ptrStack->size; i++)
         ((char*)ptrStack->buffForErr)[i] = POISON_VALUE;
     stack_main(ptrStack, WRITE, x, ptrStack->buffForErr);
@@ -245,34 +237,37 @@ void stack_reset_pos(Stack *ptrStack, int x){
         ((char*)ptrStack->buffForErr)[i] = 0;
 }
 
-/** Checks pointers for NULL value \n*/
-///returns !0 if error occurred and prints messages about
-int stackErrorCheck(Stack *ptrStack) {      //ч точки зрения производительности лучше добавить проверку на наличие ошибки и выход в самое начало, поскольку ошибки чаще не случаются, а тут каждый раз проверка всех ошибок
+///returns !0 if error occurred
+int stackErrorCheck(Stack *ptrStack) {
     if (ptrStack != NULL) {
-        //вывод инфы об ошибках
-        if (error_main(ptrStack, READ, DataArrayNull))
-            printf("error DataArrayNull\n");
-        if (error_main(ptrStack, READ, BuffForErrNull))
-            printf("error BuffForErrNull\n");
-        if (error_main(ptrStack, READ, BuffForResNull))
-            printf("error BuffForResNull\n");
-        if (error_main(ptrStack, READ, MetaNull))
-            printf("error MetaNull\n");
-        if(error_main(ptrStack, READ, HashMismatch))
-            printf("error HashMismatch\n");
-        //проверка канареек
-        if(kanareiyka_check(ptrStack)){
-            error_main(ptrStack, WRITE, KanareiykePizda);
-            printf("error KanareiykePizda\n");
-        }
         return ptrStack->error;
     } else
         return 1 << PtrStackNull;
     //ака так бы было если бы переменная error существовала
 }
 
-/** Constructor of stack. \n
- * Outputs "memory error" to command line if error occurred */
+
+///Выводит инфу об ошибках в консоль.
+void stackErrorPrint(Stack *ptrStack){
+        if (ptrStack != NULL) {
+            if (error_main(ptrStack, READ, DataArrayNull))
+                printf("error DataArrayNull\n");
+            if (error_main(ptrStack, READ, BuffForErrNull))
+                printf("error BuffForErrNull\n");
+            if (error_main(ptrStack, READ, BuffForResNull))
+                printf("error BuffForResNull\n");
+            if (error_main(ptrStack, READ, MetaNull))
+                printf("error MetaNull\n");
+            if(error_main(ptrStack, READ, HashMismatch))
+                printf("error HashMismatch\n");
+            if(error_main(ptrStack, READ, KanareiykePizda)){
+                printf("error KanareiykePizda\n");
+            }
+        } else
+            printf("error PtrStackNull\n");
+};
+
+/// Constructor of stack.
 void *stackInit(int size) {
     if (size <= 0)
         return NULL;
@@ -283,20 +278,23 @@ void *stackInit(int size) {
         ptrStack->pos = 0;
         ptrStack->metaNum = 0;//FIXME 1
         ptrStack->error = 0;
-        ptrStack->buffForRes = malloc(ptrStack->size);//буфер из нулей, вместо NULL))
+
+        ptrStack->buffForRes = malloc(ptrStack->size);
         if (ptrStack->buffForRes == NULL)
             error_main(ptrStack, WRITE, BuffForResNull);
-        ptrStack->buffForErr = calloc(ptrStack->size, sizeof(char));//буфер из нулей, вместо NULL))
+        ptrStack->buffForErr = calloc(ptrStack->size, sizeof(char));
         if (ptrStack->buffForErr == NULL)
             error_main(ptrStack, WRITE, BuffForErrNull);
+
         ptrStack->data = malloc((2 * KAN_NUM + 1) * ptrStack->size);
-        //заполняем канарейки
-        if(ptrStack->data != NULL) {
+        if(ptrStack->data != NULL) {    //заполняем канарейки
             ptrStack->num = 1;
             int i;
+            const int shift = (KAN_NUM + ptrStack->num) * ptrStack->size;
+
             for(i = 0; i < KAN_NUM * ptrStack->size; i++){
                 ((char*)ptrStack->data)[i] = KAN_VALUE;
-                ((char*)ptrStack->data)[(KAN_NUM + ptrStack->num) * ptrStack->size + i] = KAN_VALUE;
+                ((char*)ptrStack->data)[shift + i] = KAN_VALUE;
             }
             for(i = 0; i < ptrStack->size; i++)
                 ((char*)ptrStack->data)[KAN_NUM * ptrStack->size + i]= POISON_VALUE;
@@ -311,13 +309,13 @@ void *stackInit(int size) {
             error_main(ptrStack, WRITE, DataArrayNull);
     } else
         printf("stackInit: memory error\n");
-    stackErrorCheck(ptrStack);
     return ptrStack;
 }
 
+/// Деструктор стека
 void stackFree(Stack *ptrStack){
     if(ptrStack != NULL){
-        free(ptrStack->data); //внутри free() есть проверка на NULL
+        free(ptrStack->data);
         free(ptrStack->buffForErr);
         free(ptrStack->buffForRes);
         free(ptrStack->meta);
@@ -325,75 +323,48 @@ void stackFree(Stack *ptrStack){
     free(ptrStack);
 }
 
-/** Array READ function \n
- * короче рассказываю анекдот:\n
- * Знаете какой наркотик гомосексуалисты предпочитают больше всего?\n
- * \n
- * \n
- * \n - кокс */
-void *stack_r(Stack *ptrStack, int x) { //FIXME: error opt
+/// Array READ function
+void *stack_r(Stack *ptrStack, int x) {
     if (!stackErrorCheck(ptrStack) && x >= 0)
         return stack_main(ptrStack, READ, x, NULL);
-
-    else if (stackErrorCheck(ptrStack) != 1 && error_main(ptrStack, READ, BuffForErrNull) == 0)
-        return ptrStack->buffForErr;
     else
-        return NULL;
+        EXIT;
 }
 
-/** Array WRITE function \n
- * @param ptrStack - pointer to stack struct
- * @param x - position in which value will be written
- * @param ptrValue - pointer to value */
-void *stack_w(Stack *ptrStack, int x, void *ptrValue) { //FIXME: error opt
+/// Array WRITE function
+void *stack_w(Stack *ptrStack, int x, void *ptrValue) {
     if (!stackErrorCheck(ptrStack) && ptrValue != NULL && x >= 0)
         return stack_main(ptrStack, WRITE, x, ptrValue);
-    else if (stackErrorCheck(ptrStack) != 1 && error_main(ptrStack, READ, BuffForErrNull) == 0)
-        return ptrStack->buffForErr;
     else
-        return NULL;
+        EXIT;
 }
 
-/** Stack function: Push \n
- * Adds a new element to the end of the stack
- * @param ptrStack - pointer to stack struct
- * @param ptrValue - pointer to value
- * @warning Value form ptrValue is needed to be the same size as one of stack's element */
-void *push(Stack *ptrStack, void *ptrValue) { //FIXME: error opt
+/// Stack function: Push
+void *push(Stack *ptrStack, void *ptrValue) {
     if (!stackErrorCheck(ptrStack) && ptrValue != NULL)
         return stack_main(ptrStack, WRITE, ptrStack->pos++, ptrValue);
-    else if (stackErrorCheck(ptrStack) != 1 && error_main(ptrStack, READ, BuffForErrNull) == 0)
-        return ptrStack->buffForErr;
     else
-        return NULL;
+        EXIT;
 }
 
-/** Stack function: Pop \n
- * Gets a new element from the end of the stack
- * @param ptrStack - pointer to stack struct */
-void *pop(Stack *ptrStack) { //FIXME: error opt
+/// Stack function: Pop
+void *pop(Stack *ptrStack) {
     if (!stackErrorCheck(ptrStack) && ptrStack->pos > 0) {
         --ptrStack->pos;
         void *buffPtr = malloc(ptrStack->size);
         myMemCpy(buffPtr, stack_main(ptrStack, READ, ptrStack->pos, NULL), ptrStack->size);
-        stack_reset_pos(ptrStack, ptrStack->pos);///< resets that position
+        stack_reset_pos(ptrStack, ptrStack->pos);
         return buffPtr;
     }
-    else if (stackErrorCheck(ptrStack) != 1 && error_main(ptrStack, READ, BuffForErrNull) == 0)
-        return ptrStack->buffForErr;
     else
-        return NULL;
+        EXIT;
 }
 
-/** Stack function: GetLast \n
- * Gets a last element of stack
- * @param ptrStack - pointer to stack struct */
-void *getLast(Stack *ptrStack) { //FIXME: error opt
+/// Stack function: GetLast
+void *getLast(Stack *ptrStack) {
     if (!stackErrorCheck(ptrStack) && ptrStack->pos > 0)
         return stack_main(ptrStack, READ, ptrStack->pos - 1, NULL);
-    else if (stackErrorCheck(ptrStack) != 1 && error_main(ptrStack, READ, BuffForErrNull) == 0)
-        return ptrStack->buffForErr;
     else
-        return NULL;
+        EXIT;
 }
 

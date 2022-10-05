@@ -1,9 +1,14 @@
 #include <stdio.h>
 #include "stack.h"
 
+GENERATE_CREATE(int)
+
+GENERATE_POP(int)
+
+GENERATE_PUSH(int)
+
 int main() {
-    Stack *ptrStack;
-    ptrStack = stackInit(sizeof(int));
+    Stack *ptrStack = create_int();
     if(stackErrorCheck(ptrStack))
         return 1;
 
@@ -12,12 +17,12 @@ int main() {
     int *ptrValue = &c;
     for(int i = 0; i < 10; i++){
         c = getchar();
-        push(ptrStack, ptrValue);
+        push_int(ptrStack, ptrValue);
     }
+    printf("\n|%c|\n",GET(int, ptrStack, 1));
 
-    printf("HASH - huesh: %llu\n", hash_sedgwick(ptrStack));
     for(int i = 0; i < 10; i++){
-        printf("%c", *((int*)pop(ptrStack)));
+        printf("%c", *pop_int(ptrStack));
     }
     getchar();
     stackFree(ptrStack);

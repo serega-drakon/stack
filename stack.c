@@ -43,13 +43,13 @@ enum Errors { //Не больше 8 ошибок! иначе надо расши
 /// Structure of stack
 struct Stack_ {
     void *data; ///< Pointer to data
-    void *buffForErr;///< buffForErr returns if error occurred
+    void *buffForErr;///< buffForErr returns if error occurred              /можно возвращать просто код ошибки
     void *buffForRes;///< buffForRes points to result of stack_main() func
     unsigned long long int hash; ///< Hash value of data array //ебать объявление конечно
-    int size; ///< Size of one element of data in bytes
-    int num; ///< Number of elements of data (malloced memory)
+    int size; ///< Size of one element of data in bytes                     обычно размер выдеоленной памяти называют capacity а кроличество элементов size
+    int num; ///< Number of elements of data (malloced memory)                  
     int pos; ///< Next free position of stack (pop/push/getlast)
-    unsigned char *meta; ///< "Poison" check of data
+    unsigned char *meta; ///< "Poison" check of data                        
     int metaNum; ///< Number of elements of meta (malloced memory)
     unsigned char error;///< is an array of bools
 };
@@ -63,7 +63,7 @@ void stack_extend(Stack *ptrStack, int x);
 int kanareiyka_check(Stack *ptrStack);
 
 //хеш считается от всего массива кроме канареек
-///Returns hash of ptrStack->data
+///Returns hash of ptrStack->data               лучше чекать хеш и от остальных данных тк изменение размера более опасно чем изменение данных
 unsigned long long int hash_sedgwick(Stack *ptrStack){
     unsigned long long int hash = 0;
     unsigned int i, a = 31415, b = 27183;
@@ -84,7 +84,8 @@ void myMemCpy(const void *toPtr, const void *fromPtr, int sizeInBytes){
 
 void saveResToBuff(Stack *ptrStack, int x){
     const int shift_in_stack = (x + KAN_NUM) * ptrStack->size;
-    const void* from_buf = &((char *) ptrStack->data)[shift_in_stack];
+    const void* from_buf = &((char *) ptrStack->data)[shift_in_stack]; 
+    //const void* from_buf = ((char *) ptrStack->data) + shift_in_stack;      //так проще 
     myMemCpy(ptrStack->buffForRes, from_buf, ptrStack->size);
 }
 
